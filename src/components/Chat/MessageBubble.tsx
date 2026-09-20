@@ -236,6 +236,19 @@ export function MessageBubble({
               <Ban size={14} aria-hidden="true" />
               This message was deleted
             </span>
+          ) : message.message_type === 'image' ? (
+            <span className="bubble__image-wrap">
+              {message.media_url ? (
+                <img
+                  className="bubble__image"
+                  src={message.media_url}
+                  alt="Shared image"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="bubble__image-loading">Image unavailable</span>
+              )}
+            </span>
           ) : (
             <span className="bubble__text">{message.content}</span>
           )}

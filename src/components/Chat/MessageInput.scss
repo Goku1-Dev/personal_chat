@@ -1,4 +1,5 @@
 @use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
 
 .composer {
   flex: 0 0 auto;
@@ -258,4 +259,80 @@
     padding-left: 10px;
     padding-right: 10px;
   }
+}
+// Reply preview above the field ---------------------------------------------
+.composer-reply {
+  display: flex;
+  align-items: stretch;
+  gap: v.$space-2;
+  max-width: v.$max-width;
+  margin: 0 auto v.$space-2;
+  padding: v.$space-2 v.$space-2 v.$space-2 v.$space-3;
+  border-radius: v.$radius-md;
+  border-left: 3px solid v.$text-secondary;
+  background: v.$surface;
+  animation: rise-in v.$fast v.$ease both;
+}
+
+.composer-reply__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.composer-reply__label {
+  font-size: v.$text-xs;
+  font-weight: 600;
+  color: v.$text-secondary;
+}
+
+.composer-reply__text {
+  font-size: v.$text-sm;
+  color: v.$text-tertiary;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.composer-reply__close {
+  @include m.icon-button(32px);
+  align-self: center;
+  color: v.$text-secondary;
+}
+
+
+.composer__emoji-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.emoji-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(6, 38px);
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid v.$border;
+  border-radius: 14px;
+  background: rgba(20, 20, 20, 0.98);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.emoji-picker__item {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.emoji-picker__item:hover {
+  background: rgba(255, 255, 255, 0.08);
 }

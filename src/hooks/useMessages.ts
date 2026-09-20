@@ -34,6 +34,7 @@ export interface UseMessagesResult {
   loadOlder: () => Promise<void>;
   reload: () => Promise<void>;
   sendMessage: (content: string, replyToMessageId?: string | null) => Promise<void>;
+  sendImage: (file: File, replyToMessageId?: string | null) => Promise<void>;
   editMessage: (id: string, content: string) => Promise<void>;
   /** Hide messages for this person only. Works on either sender's messages. */
   deleteForMe: (ids: string[]) => Promise<number>;
@@ -69,6 +70,12 @@ function makeTempId(): string {
 
 function isLocalId(id: string): boolean {
   return id.startsWith('pending-');
+}
+
+function getMediaUrl(path: string | null): string | null {
+  if (!path) return null;
+  const { data } = supabase.storage.from('chat-media').getPublicUrl(path);
+  return data.publicUrl || null;
 }
 
 /**
@@ -148,6 +155,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
 
         const enriched: UiMessage = {
           ...row,
+          media_url: getMediaUrl(row.media_path),
           reply_to_sender_id: parent?.sender_id ?? null,
           reply_to_content:
             parent && !parent.deleted_for_everyone ? parent.content : null,
@@ -367,6 +375,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         content,
         message_type: 'text',
         media_path: null,
+        media_url: null,
         created_at: now,
         updated_at: now,
         edited_at: null,
@@ -435,6 +444,97 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         throw new Error(toUserMessage(error, "Couldn't send your message. Try again."));
       } finally {
         inFlightSends.current.delete(fingerprint);
+      }
+    },
+    [conversationId, userId, messages],
+  );
+
+  const sendImage = useCallback(
+    async (file: File, replyToMessageId: string | null = null) => {
+      if (!conversationId || !userId) return;
+      if (!file.type.startsWith('image/')) throw new Error('Please select an image file.');
+      if (file.size > 10 * 1024 * 1024) throw new Error('Image size must be less than 10 MB.');
+
+      const parent = replyToMessageId
+        ? messages.find((message) => message.id === replyToMessageId)
+        : undefined;
+      const replyId =
+        parent && !parent.deleted_for_everyone && !isLocalId(parent.id) ? parent.id : null;
+
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const path = `${conversationId}/${userId}/${crypto.randomUUID()}.${ext}`;
+      const tempId = makeTempId();
+      const now = new Date().toISOString();
+      const mediaUrl = URL.createObjectURL(file);
+
+      const optimistic: UiMessage = {
+        id: tempId,
+        conversation_id: conversationId,
+        sender_id: userId,
+        content: '',
+        message_type: 'image',
+        media_path: path,
+        media_url: mediaUrl,
+        created_at: now,
+        updated_at: now,
+        edited_at: null,
+        read_at: null,
+        deleted_at: null,
+        deleted_for_everyone: false,
+        deleted_by: null,
+        reply_to_message_id: replyId,
+        reply_to_sender_id: replyId ? (parent?.sender_id ?? null) : null,
+        reply_to_content: replyId ? (parent?.content ?? null) : null,
+        reply_to_unavailable: false,
+        pending: true,
+      };
+
+      setMessages((current) => sortAscending([...current, optimistic]));
+
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('chat-media')
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+
+        const { data, error } = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: conversationId,
+            sender_id: userId,
+            content: '',
+            message_type: 'image',
+            media_path: path,
+            reply_to_message_id: replyId,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+
+        const savedId = (data as { id: string }).id;
+        const { data: full, error: readError } = await supabase
+          .from(MESSAGE_VIEW)
+          .select(MESSAGE_COLUMNS)
+          .eq('id', savedId)
+          .maybeSingle();
+        if (readError) throw readError;
+
+        const saved: UiMessage = full
+          ? { ...(full as VisibleMessage), media_url: getMediaUrl((full as VisibleMessage).media_path) }
+          : { ...optimistic, id: savedId, pending: false };
+
+        setMessages((current) =>
+          sortAscending(current.map((message) => (message.id === tempId ? saved : message))),
+        );
+        URL.revokeObjectURL(mediaUrl);
+      } catch (error) {
+        URL.revokeObjectURL(mediaUrl);
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === tempId ? { ...message, pending: false, failed: true } : message,
+          ),
+        );
+        throw new Error(toUserMessage(error, "Couldn't send the image. Try again."));
       }
     },
     [conversationId, userId, messages],
@@ -566,6 +666,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
               ...message,
               content: '',
               media_path: null,
+              media_url: null,
               deleted_for_everyone: true,
               deleted_at: now,
               deleted_by: userId,
@@ -597,6 +698,13 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
               : "Couldn't delete this message for everyone.",
           ),
         );
+      }
+
+      const mediaPaths = targets
+        .map((message) => message.media_path)
+        .filter((path): path is string => Boolean(path));
+      if (mediaPaths.length) {
+        await supabase.storage.from('chat-media').remove(mediaPaths);
       }
 
       return typeof data === 'number' ? data : targetIds.length;
@@ -680,6 +788,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
     loadOlder,
     reload: load,
     sendMessage,
+    sendImage,
     editMessage,
     deleteForMe,
     deleteForEveryone,

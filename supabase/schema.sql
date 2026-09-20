@@ -61,8 +61,9 @@ create table if not exists public.messages (
   sender_id       uuid not null default auth.uid()
                     references public.profiles (id) on delete cascade,
 
-  content         text not null check (char_length(content) between 1 and 4000),
-  message_type    text not null default 'text' check (message_type in ('text')),
+  content         text not null check (char_length(content) between 0 and 4000),
+  message_type    text not null default 'text' check (message_type in ('text', 'image')),
+  media_path      text,
 
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now(),
@@ -479,3 +480,13 @@ $$;
 revoke all on function
   public.setup_participants(uuid, text, uuid, text, text)
   from public, anon, authenticated;
+
+
+-- Chat image storage
+insert into storage.buckets (id, name, public) values ('chat-media', 'chat-media', true) on conflict (id) do update set public = true;
+
+drop policy if exists chat_media_insert on storage.objects;
+create policy chat_media_insert on storage.objects for insert to authenticated with check (bucket_id = 'chat-media' and split_part(name, '/', 1) in (select cp.conversation_id::text from public.conversation_participants cp where cp.profile_id = auth.uid()));
+
+drop policy if exists chat_media_delete on storage.objects;
+create policy chat_media_delete on storage.objects for delete to authenticated using (bucket_id = 'chat-media' and split_part(name, '/', 1) in (select cp.conversation_id::text from public.conversation_participants cp where cp.profile_id = auth.uid()));

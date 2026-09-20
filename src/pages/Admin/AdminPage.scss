@@ -233,3 +233,8 @@
   line-height: 1.55;
   color: v.$text-tertiary;
 }
+
+.admin__recent-text--deleted {
+  font-style: italic;
+  color: v.$text-tertiary;
+}

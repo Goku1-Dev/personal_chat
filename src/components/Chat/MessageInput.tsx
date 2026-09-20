@@ -10,6 +10,7 @@ import {
 import {
   Camera,
   ImagePlus,
+  Smile,
   SendHorizontal,
   X,
 } from 'lucide-react';
@@ -32,6 +33,8 @@ const MAX_HEIGHT = 132;
 const TYPING_IDLE_MS = 2000;
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+const EMOJIS = ['😀','😂','😍','😘','😊','😎','🤔','😢','😭','😡','👍','👎','❤️','🔥','🎉','🙏','👏','💯','✨','🥰','🤣','😅','🤝','💙','💚','💛','🫶','🙌','😴','🤗'];
+
 export function MessageInput({
   onSend,
   onSendImage,
@@ -42,6 +45,7 @@ export function MessageInput({
 }: MessageInputProps) {
   const [value, setValue] = useState('');
   const [sending, setSending] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +118,20 @@ export function MessageInput({
     },
     [resizeTextarea, startTyping, stopTyping],
   );
+
+  const addEmoji = useCallback((emoji: string) => {
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? value.length;
+    const end = textarea?.selectionEnd ?? value.length;
+    const next = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+    setValue(next);
+    setEmojiOpen(false);
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const caret = start + emoji.length;
+      textareaRef.current?.setSelectionRange(caret, caret);
+    });
+  }, [value]);
 
   const submit = useCallback(async () => {
     if (!canSend || disabled) return;
@@ -237,6 +255,34 @@ export function MessageInput({
       )}
 
       <div className="composer__inner">
+        <div className="composer__emoji-wrap">
+          <button
+            type="button"
+            className="composer__media-button"
+            onClick={() => setEmojiOpen((open) => !open)}
+            disabled={disabled || sending}
+            aria-label="Open emoji picker"
+            title="Emoji"
+          >
+            <Smile size={20} strokeWidth={2} />
+          </button>
+
+          {emojiOpen && (
+            <div className="emoji-picker" role="dialog" aria-label="Emoji picker">
+              {EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="emoji-picker__item"
+                  onClick={() => addEmoji(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Image picker */}
         <div className="composer__media-actions">
           <button

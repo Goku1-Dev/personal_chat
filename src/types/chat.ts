@@ -22,6 +22,8 @@ export interface Message {
   content: string;
   message_type: MessageType;
   media_path: string | null;
+  /** Public/signed URL used by the image bubble. */
+  media_url?: string | null;
   created_at: string;
   updated_at: string;
   edited_at: string | null;

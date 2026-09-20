@@ -48,6 +48,7 @@ export function ChatPage() {
     othersPresent,
     loadOlder,
     sendMessage,
+    sendImage,
     editMessage,
     deleteForMe,
     deleteForEveryone,
@@ -218,10 +219,16 @@ export function ChatPage() {
   );
 
   const handleSendImage = useCallback(
-    async (_file: File) => {
-      notify('Image sending is not available yet.', 'error');
+    async (file: File) => {
+      try {
+        await sendImage(file, replyTo?.id ?? null);
+        setReplyTo(null);
+      } catch (error) {
+        notify(error instanceof Error ? error.message : "Couldn't send the image.", 'error');
+        throw error;
+      }
     },
-    [notify],
+    [sendImage, replyTo, notify],
   );
 
   const handleRetry = useCallback(
@@ -277,7 +284,7 @@ export function ChatPage() {
         id: message.id,
         senderId: message.sender_id,
         senderName: resolveName(message.sender_id) ?? 'Message',
-        content: message.content,
+        content: message.message_type === 'image' ? 'Photo' : message.content,
       });
       exitSelection();
     },
