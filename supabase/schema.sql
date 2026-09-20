@@ -12,6 +12,11 @@
 
 create extension if not exists "pgcrypto";
 
+-- NOTE: after running this file, also run
+--   supabase/migrations/0002_delete_modes_and_replies.sql
+-- which adds replies, per-person deletions and delete-for-everyone.
+
+
 -- ---------------------------------------------------------------------------
 -- 1. Tables
 -- ---------------------------------------------------------------------------
@@ -412,11 +417,11 @@ $$;
 -- Create the two accounts first (Dashboard → Authentication → Users → Add
 -- user, with "Auto Confirm User" ticked), copy their UUIDs, then run:
 --
-  select public.setup_participants(
-    'ADMIN-UUID-HERE'::17058a16-4529-4d39-9161-0ee2944290b1, 'Admin display name',
-    'USER-UUID-HERE'::25b1888e-5ea8-434c-8015-50b27fce9a39,  'Their display name',
-    'Our Chat'
-  );
+--   select public.setup_participants(
+--     'ADMIN-UUID-HERE'::uuid, 'Admin display name',
+--     'USER-UUID-HERE'::uuid,  'Their display name',
+--     'Our Chat'
+--   );
 --
 -- Running it again updates the names and leaves the conversation alone.
 -- ---------------------------------------------------------------------------

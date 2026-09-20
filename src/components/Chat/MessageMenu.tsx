@@ -1,4 +1,4 @@
-import { Copy, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import { Copy, CornerUpLeft, EyeOff, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Sheet, type SheetAction } from '@/components/UI/Sheet';
 import type { UiMessage } from '@/types/chat';
 
@@ -6,31 +6,48 @@ interface MessageMenuProps {
   message: UiMessage | null;
   isOwn: boolean;
   onClose: () => void;
+  onReply: (message: UiMessage) => void;
   onEdit: (message: UiMessage) => void;
-  onDelete: (message: UiMessage) => void;
+  onDeleteForMe: (message: UiMessage) => void;
+  onDeleteForEveryone: (message: UiMessage) => void;
   onSelect: (message: UiMessage) => void;
   onCopy: (message: UiMessage) => void;
 }
 
 /**
- * Actions for a single message. Edit and delete only appear on your own
- * messages — the other person's bubble offers selection and copy, and the
- * database refuses anything more even if this menu were bypassed.
+ * Actions for a single message.
+ *
+ * Both delete modes are offered on either person's messages, which is the
+ * product rule for this chat. Editing stays with the author: changing what
+ * someone else said is a different thing from removing it, and the database
+ * refuses it regardless of what this menu shows.
  */
 export function MessageMenu({
   message,
   isOwn,
   onClose,
+  onReply,
   onEdit,
-  onDelete,
+  onDeleteForMe,
+  onDeleteForEveryone,
   onSelect,
   onCopy,
 }: MessageMenuProps) {
   if (!message) return null;
 
+  const isDeleted = message.deleted_for_everyone;
   const actions: SheetAction[] = [];
 
-  if (isOwn) {
+  if (!isDeleted) {
+    actions.push({
+      id: 'reply',
+      label: 'Reply',
+      icon: <CornerUpLeft size={18} />,
+      onSelect: () => onReply(message),
+    });
+  }
+
+  if (isOwn && !isDeleted) {
     actions.push({
       id: 'edit',
       label: 'Edit',
@@ -39,12 +56,14 @@ export function MessageMenu({
     });
   }
 
-  actions.push({
-    id: 'copy',
-    label: 'Copy text',
-    icon: <Copy size={18} />,
-    onSelect: () => onCopy(message),
-  });
+  if (!isDeleted) {
+    actions.push({
+      id: 'copy',
+      label: 'Copy text',
+      icon: <Copy size={18} />,
+      onSelect: () => onCopy(message),
+    });
+  }
 
   actions.push({
     id: 'select',
@@ -53,21 +72,30 @@ export function MessageMenu({
     onSelect: () => onSelect(message),
   });
 
-  if (isOwn) {
+  actions.push({
+    id: 'delete-me',
+    label: 'Delete for me',
+    icon: <EyeOff size={18} />,
+    hint: 'Hides it on this side only',
+    onSelect: () => onDeleteForMe(message),
+  });
+
+  if (!isDeleted) {
     actions.push({
-      id: 'delete',
-      label: 'Delete',
+      id: 'delete-everyone',
+      label: 'Delete for everyone',
       icon: <Trash2 size={18} />,
       tone: 'danger',
-      onSelect: () => onDelete(message),
+      hint: 'Removes the text for both of you',
+      onSelect: () => onDeleteForEveryone(message),
     });
   }
 
   return (
     <Sheet
       open
-      title={isOwn ? 'Your message' : 'Message'}
-      preview={message.content}
+      title={isDeleted ? 'Deleted message' : isOwn ? 'Your message' : 'Message'}
+      preview={isDeleted ? undefined : message.content}
       actions={actions}
       onClose={onClose}
     />

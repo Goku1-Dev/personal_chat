@@ -3,26 +3,27 @@ import './SelectionToolbar.scss';
 
 interface SelectionToolbarProps {
   selectedCount: number;
-  /** How many of the selected messages the current participant may delete. */
-  deletableCount: number;
-  allOwnSelected: boolean;
+  /** Every message currently on screen, from either participant. */
+  totalCount: number;
+  allSelected: boolean;
   onCancel: () => void;
-  onSelectAllOwn: () => void;
-  onDeleteSelected: () => void;
+  onSelectAll: () => void;
+  onDelete: () => void;
 }
 
+/**
+ * Selection applies to both people's messages, because both delete modes do.
+ * There is one delete button; which mode it performs is asked afterwards.
+ */
 export function SelectionToolbar({
   selectedCount,
-  deletableCount,
-  allOwnSelected,
+  totalCount,
+  allSelected,
   onCancel,
-  onSelectAllOwn,
-  onDeleteSelected,
+  onSelectAll,
+  onDelete,
 }: SelectionToolbarProps) {
-  const label =
-    selectedCount === 0
-      ? 'Select messages'
-      : `${selectedCount} selected`;
+  const label = selectedCount === 0 ? 'Select messages' : `${selectedCount} selected`;
 
   return (
     <header className="selection-bar">
@@ -43,9 +44,10 @@ export function SelectionToolbar({
         <button
           type="button"
           className="selection-bar__icon"
-          onClick={onSelectAllOwn}
-          aria-label={allOwnSelected ? 'Clear selection' : 'Select all your messages'}
-          aria-pressed={allOwnSelected}
+          onClick={onSelectAll}
+          disabled={totalCount === 0}
+          aria-label={allSelected ? 'Clear selection' : 'Select all messages'}
+          aria-pressed={allSelected}
         >
           <CheckCheck size={20} aria-hidden="true" />
         </button>
@@ -53,24 +55,19 @@ export function SelectionToolbar({
         <button
           type="button"
           className="selection-bar__icon selection-bar__icon--danger"
-          onClick={onDeleteSelected}
-          disabled={deletableCount === 0}
+          onClick={onDelete}
+          disabled={selectedCount === 0}
           aria-label={
-            deletableCount === 0
-              ? 'Nothing selected that you can delete'
-              : `Delete ${deletableCount} of your messages`
+            selectedCount === 0
+              ? 'Select messages to delete'
+              : `Delete ${selectedCount} selected ${
+                  selectedCount === 1 ? 'message' : 'messages'
+                }`
           }
         >
           <Trash2 size={19} aria-hidden="true" />
         </button>
       </div>
-
-      {selectedCount > deletableCount && (
-        <p className="selection-bar__note">
-          Only the {deletableCount === 1 ? 'message' : `${deletableCount} messages`} you
-          sent can be deleted.
-        </p>
-      )}
     </header>
   );
 }

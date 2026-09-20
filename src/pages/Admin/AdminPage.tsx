@@ -34,14 +34,14 @@ export function AdminPage() {
           .select('id, role, display_name, created_at')
           .order('role', { ascending: true }),
         supabase
-          .from('messages')
+          .from('messages_visible')
           .select('*')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: false })
           .limit(RECENT_LIMIT),
         // Only the columns the counters need, so this stays cheap.
         supabase
-          .from('messages')
+          .from('messages_visible')
           .select('sender_id, created_at, read_at')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: true }),
@@ -193,7 +193,17 @@ export function AdminPage() {
                           {formatRelative(message.created_at)}
                         </span>
                       </div>
-                      <p className="admin__recent-text">{message.content}</p>
+                      <p
+                        className={`admin__recent-text ${
+                          message.deleted_for_everyone
+                            ? 'admin__recent-text--deleted'
+                            : ''
+                        }`}
+                      >
+                        {message.deleted_for_everyone
+                          ? 'This message was deleted'
+                          : message.content}
+                      </p>
                     </li>
                   ))}
                 </ul>

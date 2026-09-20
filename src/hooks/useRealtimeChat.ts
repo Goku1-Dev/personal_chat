@@ -10,6 +10,8 @@ interface Options {
   onInsert: (message: Message) => void;
   onUpdate: (message: Message) => void;
   onDelete: (id: string) => void;
+  /** Fired when this same person hides a message from another tab/device. */
+  onHiddenForMe?: (messageId: string) => void;
 }
 
 interface Result {
@@ -40,6 +42,7 @@ export function useRealtimeChat({
   onInsert,
   onUpdate,
   onDelete,
+  onHiddenForMe,
 }: Options): Result {
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [othersTyping, setOthersTyping] = useState(false);
@@ -51,10 +54,10 @@ export function useRealtimeChat({
   const hasConnected = useRef(false);
 
   // Keep handlers in refs so the subscription is created once per conversation.
-  const handlers = useRef({ onInsert, onUpdate, onDelete });
+  const handlers = useRef({ onInsert, onUpdate, onDelete, onHiddenForMe });
   useEffect(() => {
-    handlers.current = { onInsert, onUpdate, onDelete };
-  }, [onInsert, onUpdate, onDelete]);
+    handlers.current = { onInsert, onUpdate, onDelete, onHiddenForMe };
+  }, [onInsert, onUpdate, onDelete, onHiddenForMe]);
 
   const clearTypingTimer = useCallback(() => {
     if (typingTimer.current) {
@@ -102,6 +105,21 @@ export function useRealtimeChat({
         (payload) => {
           const old = payload.old as Partial<Message>;
           if (old?.id) handlers.current.onDelete(old.id);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_deletions',
+          filter: `profile_id=eq.${userId}`,
+        },
+        (payload) => {
+          // Only ever this person's own hide-list: RLS would not deliver
+          // anyone else's, and the other participant's view must not change.
+          const row = payload.new as { message_id?: string };
+          if (row?.message_id) handlers.current.onHiddenForMe?.(row.message_id);
         },
       )
       .on('broadcast', { event: 'typing' }, ({ payload }) => {

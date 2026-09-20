@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
-import { AlertCircle, Check, CheckCheck, Clock } from 'lucide-react';
+import { AlertCircle, Ban, Check, CheckCheck, Clock } from 'lucide-react';
 import { formatFull, formatTime } from '@/lib/format';
 import { MAX_MESSAGE_LENGTH } from '@/lib/errors';
 import { Spinner } from '@/components/UI/Spinner';
@@ -22,11 +22,16 @@ interface MessageBubbleProps {
   selected: boolean;
   editing: boolean;
   savingEdit: boolean;
+  /** Display name of whoever wrote the quoted message. */
+  replyAuthorName: string | null;
+  /** True while this message is the target of a jump from a reply. */
+  highlighted: boolean;
   onToggleSelect: (id: string) => void;
   onOpenMenu: (message: UiMessage) => void;
   onSaveEdit: (id: string, content: string) => void;
   onCancelEdit: () => void;
   onRetry: (message: UiMessage) => void;
+  onJumpToParent: (messageId: string) => void;
 }
 
 export function MessageBubble({
@@ -37,14 +42,19 @@ export function MessageBubble({
   selected,
   editing,
   savingEdit,
+  replyAuthorName,
+  highlighted,
   onToggleSelect,
   onOpenMenu,
   onSaveEdit,
   onCancelEdit,
   onRetry,
+  onJumpToParent,
 }: MessageBubbleProps) {
   const [draft, setDraft] = useState(message.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isDeleted = message.deleted_for_everyone;
 
   useEffect(() => {
     if (editing) setDraft(message.content);
@@ -95,6 +105,8 @@ export function MessageBubble({
       onRetry(message);
       return;
     }
+    // A deleted message still opens its menu: it can be hidden from your own
+    // side, or selected, even though there is nothing left to read.
     if (!message.pending) onOpenMenu(message);
   };
 
@@ -111,13 +123,14 @@ export function MessageBubble({
     showMeta ? 'bubble-row--run-end' : '',
     selecting ? 'bubble-row--selecting' : '',
     selected ? 'bubble-row--selected' : '',
+    highlighted ? 'bubble-row--highlighted' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   if (editing) {
     return (
-      <div className={`${rowClassName} bubble-row--editing`}>
+      <div className={`${rowClassName} bubble-row--editing`} data-message-id={message.id}>
         <div className="bubble-edit" role="group" aria-label="Editing message">
           <p className="bubble-edit__label">Editing message</p>
 
@@ -159,8 +172,10 @@ export function MessageBubble({
     );
   }
 
+  const showQuote = Boolean(message.reply_to_message_id);
+
   return (
-    <div className={rowClassName}>
+    <div className={rowClassName} data-message-id={message.id}>
       {selecting && (
         <span
           className={`bubble-row__check ${selected ? 'bubble-row__check--on' : ''}`}
@@ -173,30 +188,68 @@ export function MessageBubble({
       <div className="bubble-row__stack">
         <button
           type="button"
-          className="bubble"
+          className={`bubble ${isDeleted ? 'bubble--deleted' : ''}`}
           onClick={handleActivate}
           onContextMenu={handleContextMenu}
           aria-haspopup={selecting ? undefined : 'dialog'}
           aria-pressed={selecting ? selected : undefined}
           aria-label={
             selecting
-              ? `${selected ? 'Deselect' : 'Select'} message: ${message.content}`
+              ? `${selected ? 'Deselect' : 'Select'} message: ${
+                  isDeleted ? 'deleted message' : message.content
+                }`
               : undefined
           }
           title={formatFull(message.created_at)}
         >
-          <span className="bubble__text">{message.content}</span>
+          {showQuote && (
+            // Rendered as a span, not a nested button: a button inside a
+            // button is invalid, so the jump is handled by a click on this
+            // region and the whole bubble stays keyboard reachable.
+            <span
+              className={`bubble-quote ${
+                message.reply_to_unavailable ? 'bubble-quote--gone' : ''
+              }`}
+              role={message.reply_to_unavailable ? undefined : 'link'}
+              onClick={(event) => {
+                if (selecting || message.reply_to_unavailable) return;
+                if (!message.reply_to_message_id) return;
+                event.stopPropagation();
+                onJumpToParent(message.reply_to_message_id);
+              }}
+            >
+              <span className="bubble-quote__author">
+                {message.reply_to_unavailable
+                  ? 'Original message'
+                  : (replyAuthorName ?? 'Message')}
+              </span>
+              <span className="bubble-quote__text">
+                {message.reply_to_unavailable
+                  ? 'Message deleted'
+                  : message.reply_to_content}
+              </span>
+            </span>
+          )}
+
+          {isDeleted ? (
+            <span className="bubble__deleted">
+              <Ban size={14} aria-hidden="true" />
+              This message was deleted
+            </span>
+          ) : (
+            <span className="bubble__text">{message.content}</span>
+          )}
         </button>
 
         {showMeta && (
           <p className="bubble-meta">
             <span className="bubble-meta__time">{formatTime(message.created_at)}</span>
 
-            {message.edited_at && (
+            {message.edited_at && !isDeleted && (
               <span className="bubble-meta__edited"> · edited</span>
             )}
 
-            {isOwn && (
+            {isOwn && !isDeleted && (
               <span className="bubble-meta__status">
                 {message.failed ? (
                   <>

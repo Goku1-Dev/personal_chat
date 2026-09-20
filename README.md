@@ -63,6 +63,11 @@ Open **SQL Editor → New query**, paste the whole of `supabase/schema.sql`, and
 run it. This creates the tables, indexes, constraints, triggers, RLS policies
 and realtime configuration in one pass. It is safe to run again later.
 
+### 4b. Run the migration
+
+Then run `supabase/migrations/0002_delete_modes_and_replies.sql` the same way.
+It adds replies and the two delete modes, and is safe to run more than once.
+
 ### 5. Create the two participant accounts
 
 **Authentication → Users → Add user**, twice. Tick **Auto Confirm User** both
@@ -234,6 +239,44 @@ The password gate calls your deployed Edge Function even in development, so
 step 10 needs to be done before the gate will let you in.
 
 ---
+
+## Deleting and replying
+
+Two delete modes, as in WhatsApp, and both are available to **either**
+participant on **either** person's messages:
+
+| | Delete for me | Delete for everyone |
+| --- | --- | --- |
+| What it touches | your view only | both views |
+| The message row | untouched | kept, text blanked |
+| Where the state lives | `message_deletions` | `messages.deleted_for_everyone` |
+| Reversible | not in the UI (the row supports it) | no |
+
+"Delete for everyone" does not merely set a flag the client agrees to respect:
+the database blanks `content` in the same statement, so the text is genuinely
+gone for both of you. The row survives so replies that point at it keep a valid
+target and show "Message deleted" instead of breaking.
+
+Replies are a real foreign key (`messages.reply_to_message_id`), not copied
+text. Tap a quote to jump to the original; it scrolls into view and flashes.
+If the original was deleted for everyone — or you hid it for yourself — the
+quote shows as unavailable rather than putting back something you should not
+see.
+
+Selection mode covers both senders. "Select all" selects everything on screen,
+and the toolbar's delete button asks which mode to use. However many messages
+are selected, each mode is a single RPC call and a single transaction, not one
+request per message.
+
+### Why deleting is an RPC but editing is not
+
+Letting either person delete the other's messages, without letting either
+person *rewrite* the other's messages, cannot be expressed as one `UPDATE`
+policy — policies combine with OR, so a permissive one would open up editing
+too. So the `UPDATE` policy stays restricted to your own messages, and
+`delete_messages_for_everyone()` is a `security definer` function that can set
+only the deletion fields. A trigger blocks any other route to those columns,
+blocks editing a message that is already deleted, and blocks un-deleting.
 
 ## How the security works
 

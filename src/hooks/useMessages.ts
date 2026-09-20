@@ -7,7 +7,13 @@ import {
   toUserMessage,
 } from '@/lib/errors';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
-import type { ConnectionStatus, Message, Profile, UiMessage } from '@/types/chat';
+import type {
+  ConnectionStatus,
+  Message,
+  Profile,
+  UiMessage,
+  VisibleMessage,
+} from '@/types/chat';
 
 interface Options {
   conversationId: string | null;
@@ -27,17 +33,23 @@ export interface UseMessagesResult {
   othersPresent: boolean;
   loadOlder: () => Promise<void>;
   reload: () => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, replyToMessageId?: string | null) => Promise<void>;
   editMessage: (id: string, content: string) => Promise<void>;
-  deleteMessages: (ids: string[]) => Promise<void>;
+  /** Hide messages for this person only. Works on either sender's messages. */
+  deleteForMe: (ids: string[]) => Promise<number>;
+  /** Clear the text for both people. Works on either sender's messages. */
+  deleteForEveryone: (ids: string[]) => Promise<number>;
   deleteAllMine: () => Promise<number>;
   clearForMe: () => Promise<void>;
   markThreadRead: () => Promise<void>;
   broadcastTyping: (typing: boolean) => void;
 }
 
+/** The view resolves per-person hiding and the quoted parent in one query. */
+const MESSAGE_VIEW = 'messages_visible';
+
 const MESSAGE_COLUMNS =
-  'id, conversation_id, sender_id, content, message_type, created_at, updated_at, edited_at, read_at, deleted_at';
+  'id, conversation_id, sender_id, content, message_type, media_path, created_at, updated_at, edited_at, read_at, deleted_at, deleted_for_everyone, deleted_by, reply_to_message_id, reply_to_sender_id, reply_to_content, reply_to_unavailable';
 
 function sortAscending(list: UiMessage[]): UiMessage[] {
   return [...list].sort((a, b) => {
@@ -53,6 +65,10 @@ function makeTempId(): string {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`
   }`;
+}
+
+function isLocalId(id: string): boolean {
+  return id.startsWith('pending-');
 }
 
 /**
@@ -89,11 +105,56 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
 
   // --- realtime handlers ---------------------------------------------------
 
+  /** Ask the view for one row, used when a quote could not be resolved locally. */
+  const refetchOne = useCallback(async (id: string) => {
+    const { data, error } = await supabase
+      .from(MESSAGE_VIEW)
+      .select(MESSAGE_COLUMNS)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data || !mounted.current) return;
+
+    const row = data as VisibleMessage;
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === row.id ? { ...message, ...row } : message,
+      ),
+    );
+  }, []);
+
+  /**
+   * Realtime delivers the raw `messages` row, which carries no quote. Resolve
+   * the parent from what is already on screen and fall back to the network
+   * only when the reply arrives before its parent has been loaded.
+   */
   const handleInsert = useCallback(
     (row: Message) => {
       if (!visible(row.created_at)) return;
+
+      let needsParent = false;
+
       setMessages((current) => {
         if (current.some((message) => message.id === row.id)) return current;
+
+        const parent = row.reply_to_message_id
+          ? current.find((message) => message.id === row.reply_to_message_id)
+          : undefined;
+
+        if (row.reply_to_message_id && !parent) {
+          // "Not loaded" and "deleted" look identical from here, so ask.
+          needsParent = true;
+        }
+
+        const enriched: UiMessage = {
+          ...row,
+          reply_to_sender_id: parent?.sender_id ?? null,
+          reply_to_content:
+            parent && !parent.deleted_for_everyone ? parent.content : null,
+          reply_to_unavailable: Boolean(
+            row.reply_to_message_id && parent?.deleted_for_everyone,
+          ),
+        };
 
         // Our own echo: replace the optimistic bubble rather than duplicating.
         const pendingIndex = current.findIndex(
@@ -104,24 +165,50 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         );
         if (pendingIndex >= 0) {
           const next = [...current];
-          next[pendingIndex] = row;
+          next[pendingIndex] = enriched;
           return sortAscending(next);
         }
 
-        return sortAscending([...current, row]);
+        return sortAscending([...current, enriched]);
       });
+
+      if (needsParent) void refetchOne(row.id);
     },
-    [visible],
+    [visible, refetchOne],
   );
 
   const handleUpdate = useCallback((row: Message) => {
-    setMessages((current) =>
-      current.map((message) => (message.id === row.id ? { ...message, ...row } : message)),
-    );
+    setMessages((current) => {
+      if (!current.some((message) => message.id === row.id)) return current;
+
+      return current.map((message) => {
+        if (message.id === row.id) return { ...message, ...row };
+
+        // A message that just became deleted invalidates every quote of it.
+        if (row.deleted_for_everyone && message.reply_to_message_id === row.id) {
+          return { ...message, reply_to_content: null, reply_to_unavailable: true };
+        }
+
+        return message;
+      });
+    });
   }, []);
 
   const handleDelete = useCallback((id: string) => {
-    setMessages((current) => current.filter((message) => message.id !== id));
+    setMessages((current) =>
+      current
+        .filter((message) => message.id !== id)
+        .map((message) =>
+          message.reply_to_message_id === id
+            ? { ...message, reply_to_content: null, reply_to_unavailable: true }
+            : message,
+        ),
+    );
+  }, []);
+
+  /** The same person hid something in another tab or on another device. */
+  const handleHiddenForMe = useCallback((messageId: string) => {
+    setMessages((current) => current.filter((message) => message.id !== messageId));
   }, []);
 
   const { status, othersTyping, othersPresent, broadcastTyping } = useRealtimeChat({
@@ -130,18 +217,20 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
     onInsert: handleInsert,
     onUpdate: handleUpdate,
     onDelete: handleDelete,
+    onHiddenForMe: handleHiddenForMe,
   });
 
   // --- loading -------------------------------------------------------------
 
   const fetchPage = useCallback(
     async (before?: string) => {
-      if (!conversationId || !userId) {
-        return { rows: [] as Message[], more: false };
-      }
+      if (!conversationId) return { rows: [] as VisibleMessage[], more: false };
 
+      // Reading the view means hidden messages never cross the wire, so a
+      // page of 40 is 40 visible messages rather than 40 minus whatever this
+      // person has deleted for themselves.
       let query = supabase
-        .from('messages')
+        .from(MESSAGE_VIEW)
         .select(MESSAGE_COLUMNS)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
@@ -156,36 +245,14 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
-      const rows = (data ?? []) as Message[];
-
-      // Messages that this particular user has deleted.
-      const { data: deletionRows, error: deletionError } = await supabase
-        .from('message_deletions')
-        .select('message_id')
-        .eq('profile_id', userId);
-
-      if (deletionError) throw deletionError;
-
-      const deletedIds = new Set(
-        (deletionRows ?? []).map(
-          (row) => (row as { message_id: string }).message_id,
-        ),
-      );
-
-      // Hide only messages deleted by the current user.
-      const visibleRows = rows.filter((row) => !deletedIds.has(row.id));
-
+      const rows = (data ?? []) as VisibleMessage[];
       const more = rows.length > PAGE_SIZE;
 
-      return {
-        rows: visibleRows,
-        more,
-      };
+      return { rows: more ? rows.slice(0, PAGE_SIZE) : rows, more };
     },
-    [conversationId, userId],
+    [conversationId],
   );
 
   const load = useCallback(async () => {
@@ -267,7 +334,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
   // --- writes --------------------------------------------------------------
 
   const sendMessage = useCallback(
-    async (raw: string) => {
+    async (raw: string, replyToMessageId: string | null = null) => {
       if (!conversationId || !userId) return;
 
       const content = normaliseContent(raw);
@@ -276,8 +343,18 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         throw new Error(`Messages are limited to ${MAX_MESSAGE_LENGTH} characters.`);
       }
 
+      // A reply whose target has since gone is sent as an ordinary message
+      // rather than failing the insert on a reference that no longer resolves.
+      const parent = replyToMessageId
+        ? messages.find((message) => message.id === replyToMessageId)
+        : undefined;
+      const replyId =
+        parent && !parent.deleted_for_everyone && !isLocalId(parent.id)
+          ? parent.id
+          : null;
+
       // Guard against a double-fire from Enter plus a click on the button.
-      const fingerprint = `${content}`;
+      const fingerprint = `${replyId ?? ''}|${content}`;
       if (inFlightSends.current.has(fingerprint)) return;
       inFlightSends.current.add(fingerprint);
 
@@ -295,6 +372,12 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         edited_at: null,
         read_at: null,
         deleted_at: null,
+        deleted_for_everyone: false,
+        deleted_by: null,
+        reply_to_message_id: replyId,
+        reply_to_sender_id: replyId ? (parent?.sender_id ?? null) : null,
+        reply_to_content: replyId ? (parent?.content ?? null) : null,
+        reply_to_unavailable: false,
         pending: true,
       };
 
@@ -311,18 +394,34 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
             sender_id: userId,
             content,
             message_type: 'text',
+            reply_to_message_id: replyId,
           })
-          .select(MESSAGE_COLUMNS)
+          .select('id')
           .single();
 
         if (error) throw error;
 
-        const saved = data as Message;
+        const savedId = (data as { id: string }).id;
+
+        // Read the row back through the view so its quote comes from the same
+        // source of truth as every other message on screen.
+        const { data: full } = await supabase
+          .from(MESSAGE_VIEW)
+          .select(MESSAGE_COLUMNS)
+          .eq('id', savedId)
+          .maybeSingle();
+
+        const saved: UiMessage = full
+          ? { ...(full as VisibleMessage) }
+          : { ...optimistic, id: savedId };
+
         setMessages((current) =>
           sortAscending(
-            current.some((message) => message.id === saved.id)
+            current.some((message) => message.id === savedId)
               ? current.filter((message) => message.id !== tempId)
-              : current.map((message) => (message.id === tempId ? saved : message)),
+              : current.map((message) =>
+                  message.id === tempId ? { ...saved, pending: false } : message,
+                ),
           ),
         );
       } catch (error) {
@@ -338,7 +437,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         inFlightSends.current.delete(fingerprint);
       }
     },
-    [conversationId, userId],
+    [conversationId, userId, messages],
   );
 
   const editMessage = useCallback(
@@ -353,6 +452,9 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
 
       const previous = messages.find((message) => message.id === id);
       if (!previous || previous.sender_id !== userId) return;
+      if (previous.deleted_for_everyone) {
+        throw new Error('That message was deleted.');
+      }
       if (previous.content === content) return;
 
       setMessages((current) =>
@@ -368,7 +470,7 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         .update({ content })
         .eq('id', id)
         .eq('sender_id', userId)
-        .select(MESSAGE_COLUMNS)
+        .select('id')
         .single();
 
       if (error || !data) {
@@ -378,54 +480,48 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
         throw new Error(toUserMessage(error, "Couldn't edit this message."));
       }
 
-      const saved = data as Message;
+      // Quotes of this message elsewhere in the thread follow the new text.
       setMessages((current) =>
-        current.map((message) => (message.id === id ? saved : message)),
+        current.map((message) =>
+          message.reply_to_message_id === id && !message.reply_to_unavailable
+            ? { ...message, reply_to_content: content }
+            : message,
+        ),
       );
     },
     [messages, userId],
   );
 
-  const deleteMessages = useCallback(
+  /**
+   * Hide messages for this person alone.
+   *
+   * Either participant may do this to either participant's messages. The
+   * other side is completely unaffected and nothing leaves the database.
+   */
+  const deleteForMe = useCallback(
     async (ids: string[]) => {
-      if (!userId || ids.length === 0) return;
-
-      const mine = messages.filter(
-        (message) =>
-          ids.includes(message.id) && message.sender_id === userId,
-      );
-
-      if (mine.length === 0) return;
-
-      // Optimistically hide the messages from this user only.
-      const realIds = mine
-        .filter((message) => !message.id.startsWith('pending-'))
-        .map((message) => message.id);
+      if (!userId || ids.length === 0) return 0;
 
       const snapshot = messages;
+      const targets = snapshot.filter((message) => ids.includes(message.id));
+      if (targets.length === 0) return 0;
 
-      setMessages((current) =>
-        current.filter(
-          (message) => !mine.some((target) => target.id === message.id),
-        ),
-      );
+      const realIds = targets
+        .filter((message) => !isLocalId(message.id))
+        .map((message) => message.id);
 
-      if (realIds.length === 0) return;
+      setMessages((current) => current.filter((message) => !ids.includes(message.id)));
 
-      const deletionRows = realIds.map((messageId) => ({
-        message_id: messageId,
-        profile_id: userId,
-      }));
+      // Local-only rows never reached the database; dropping them is enough.
+      if (realIds.length === 0) return targets.length;
 
-      const { error } = await supabase
-        .from('message_deletions')
-        .upsert(deletionRows, {
-          onConflict: 'message_id,profile_id',
-        });
+      // One RPC for the whole selection, however large it is.
+      const { data, error } = await supabase.rpc('delete_messages_for_me', {
+        p_message_ids: realIds,
+      });
 
       if (error) {
         setMessages(snapshot);
-
         throw new Error(
           toUserMessage(
             error,
@@ -435,48 +531,93 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
           ),
         );
       }
+
+      return typeof data === 'number' ? data : realIds.length;
     },
     [messages, userId],
   );
 
+  /**
+   * Clear the text for both people, whoever wrote it.
+   *
+   * The row survives so replies keep a valid target, but the database blanks
+   * the content: "deleted" is not merely a flag the client agrees to respect.
+   */
+  const deleteForEveryone = useCallback(
+    async (ids: string[]) => {
+      if (!userId || ids.length === 0) return 0;
+
+      const snapshot = messages;
+      const targets = snapshot.filter(
+        (message) =>
+          ids.includes(message.id) &&
+          !message.deleted_for_everyone &&
+          !isLocalId(message.id),
+      );
+      if (targets.length === 0) return 0;
+
+      const targetIds = targets.map((message) => message.id);
+      const now = new Date().toISOString();
+
+      setMessages((current) =>
+        current.map((message) => {
+          if (targetIds.includes(message.id)) {
+            return {
+              ...message,
+              content: '',
+              media_path: null,
+              deleted_for_everyone: true,
+              deleted_at: now,
+              deleted_by: userId,
+            };
+          }
+
+          if (
+            message.reply_to_message_id &&
+            targetIds.includes(message.reply_to_message_id)
+          ) {
+            return { ...message, reply_to_content: null, reply_to_unavailable: true };
+          }
+
+          return message;
+        }),
+      );
+
+      const { data, error } = await supabase.rpc('delete_messages_for_everyone', {
+        p_message_ids: targetIds,
+      });
+
+      if (error) {
+        setMessages(snapshot);
+        throw new Error(
+          toUserMessage(
+            error,
+            targetIds.length > 1
+              ? "Couldn't delete those messages for everyone."
+              : "Couldn't delete this message for everyone.",
+          ),
+        );
+      }
+
+      return typeof data === 'number' ? data : targetIds.length;
+    },
+    [messages, userId],
+  );
+
+  /** Delete everything this person wrote, for both of them. */
   const deleteAllMine = useCallback(async () => {
     if (!conversationId || !userId) return 0;
 
-    const snapshot = messages;
-
-    const mine = snapshot.filter(
+    const mine = messages.filter(
       (message) =>
         message.sender_id === userId &&
-        !message.id.startsWith('pending-'),
+        !message.deleted_for_everyone &&
+        !isLocalId(message.id),
     );
-
     if (mine.length === 0) return 0;
 
-    setMessages((current) =>
-      current.filter((message) => message.sender_id !== userId),
-    );
-
-    const deletionRows = mine.map((message) => ({
-      message_id: message.id,
-      profile_id: userId,
-    }));
-
-    const { error } = await supabase
-      .from('message_deletions')
-      .upsert(deletionRows, {
-        onConflict: 'message_id,profile_id',
-      });
-
-    if (error) {
-      setMessages(snapshot);
-
-      throw new Error(
-        toUserMessage(error, "Couldn't delete your messages."),
-      );
-    }
-
-    return mine.length;
-  }, [conversationId, messages, userId]);
+    return deleteForEveryone(mine.map((message) => message.id));
+  }, [conversationId, userId, messages, deleteForEveryone]);
 
   /**
    * Hide the history for this participant only. The other person's copy of
@@ -540,7 +681,8 @@ export function useMessages({ conversationId, userId }: Options): UseMessagesRes
     reload: load,
     sendMessage,
     editMessage,
-    deleteMessages,
+    deleteForMe,
+    deleteForEveryone,
     deleteAllMine,
     clearForMe,
     markThreadRead,

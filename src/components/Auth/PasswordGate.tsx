@@ -69,7 +69,7 @@ export function PasswordGate() {
         <p className="gate__subheading">
           {isAdminMode
             ? 'Sign in with your account.'
-            : 'Enter the password to continue.'}
+            : 'Enter the email password to continue.'}
         </p>
 
         {isAdminMode && (

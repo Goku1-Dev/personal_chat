@@ -25,6 +25,11 @@ interface MessageListProps {
   onSaveEdit: (id: string, content: string) => void;
   onCancelEdit: () => void;
   onRetry: (message: UiMessage) => void;
+  /** Resolves the display name of whoever wrote a quoted message. */
+  resolveName: (senderId: string | null) => string | null;
+  /** The message a reply asked to jump to, highlighted briefly on arrival. */
+  highlightId: string | null;
+  onJumpToParent: (messageId: string) => void;
   /** Fired when the list settles at the bottom, so receipts can be written. */
   onReachBottom: () => void;
 }
@@ -50,6 +55,9 @@ export function MessageList({
   onSaveEdit,
   onCancelEdit,
   onRetry,
+  resolveName,
+  highlightId,
+  onJumpToParent,
   onReachBottom,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -121,6 +129,16 @@ export function MessageList({
     lastMessageId.current = newestId;
     topId.current = oldestId;
   }, [messages, atBottom, currentUserId, onReachBottom]);
+
+  // Bring the target of a reply jump into view. If it is not on screen it
+  // has not been paged in yet, and the caller loads more before asking again.
+  useEffect(() => {
+    if (!highlightId) return;
+    const node = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-message-id="${CSS.escape(highlightId)}"]`,
+    );
+    node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId]);
 
   // A typing bubble appearing should not shove the conversation upward
   // unless the reader is already following along.
@@ -201,6 +219,9 @@ export function MessageList({
                     onSaveEdit={onSaveEdit}
                     onCancelEdit={onCancelEdit}
                     onRetry={onRetry}
+                    replyAuthorName={resolveName(message.reply_to_sender_id)}
+                    highlighted={highlightId === message.id}
+                    onJumpToParent={onJumpToParent}
                   />
                 ))}
               </section>

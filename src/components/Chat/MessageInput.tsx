@@ -11,15 +11,20 @@ import {
   Camera,
   ImagePlus,
   SendHorizontal,
+  X,
 } from 'lucide-react';
 import { MAX_MESSAGE_LENGTH } from '@/lib/errors';
 import { Spinner } from '@/components/UI/Spinner';
+import type { ReplyTarget } from '@/types/chat';
 import './MessageInput.scss';
 
 interface MessageInputProps {
   onSend: (content: string) => Promise<void>;
   onSendImage: (file: File) => Promise<void>;
   onTypingChange: (typing: boolean) => void;
+  /** The message being answered, shown above the field until cancelled. */
+  replyTo?: ReplyTarget | null;
+  onCancelReply?: () => void;
   disabled?: boolean;
 }
 
@@ -31,6 +36,8 @@ export function MessageInput({
   onSend,
   onSendImage,
   onTypingChange,
+  replyTo = null,
+  onCancelReply,
   disabled = false,
 }: MessageInputProps) {
   const [value, setValue] = useState('');
@@ -137,12 +144,22 @@ export function MessageInput({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Escape drops the reply first; only an empty field passes it upward.
+      if (event.key === 'Escape' && replyTo) {
+        event.preventDefault();
+        event.stopPropagation();
+        onCancelReply?.();
+        return;
+      }
+
       if (event.key === 'Enter' && !event.shiftKey) {
+        // Let IME composition finish before Enter means "send".
+        if (event.nativeEvent.isComposing) return;
         event.preventDefault();
         void submit();
       }
     },
-    [submit],
+    [submit, replyTo, onCancelReply],
   );
 
   const handleImageSelected = useCallback(
@@ -195,8 +212,30 @@ export function MessageInput({
     };
   }, [onTypingChange]);
 
+  // Starting a reply should put the caret where the answer goes.
+  useEffect(() => {
+    if (replyTo) textareaRef.current?.focus();
+  }, [replyTo]);
+
   return (
     <div className="composer">
+      {replyTo && (
+        <div className="composer-reply">
+          <div className="composer-reply__body">
+            <p className="composer-reply__label">Replying to {replyTo.senderName}</p>
+            <p className="composer-reply__text">{replyTo.content}</p>
+          </div>
+          <button
+            type="button"
+            className="composer-reply__close"
+            onClick={onCancelReply}
+            aria-label="Cancel reply"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       <div className="composer__inner">
         {/* Image picker */}
         <div className="composer__media-actions">

@@ -1,11 +1,16 @@
 import { Modal } from '@/components/UI/Modal';
 import { Spinner } from '@/components/UI/Spinner';
 
-export type ConfirmKind = 'single' | 'selected' | 'mine' | 'clear' | 'logout';
+export type ConfirmKind =
+  | 'deleteForMe'
+  | 'deleteForEveryone'
+  | 'mine'
+  | 'clear'
+  | 'logout';
 
 interface DeleteDialogProps {
   kind: ConfirmKind | null;
-  /** How many messages the action will remove, where that is meaningful. */
+  /** How many messages the action will affect. */
   count?: number;
   working: boolean;
   onConfirm: () => void;
@@ -19,22 +24,36 @@ interface Copy {
   danger: boolean;
 }
 
+function plural(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
 function copyFor(kind: ConfirmKind, count: number): Copy {
   switch (kind) {
-    case 'single':
+    case 'deleteForMe':
       return {
-        title: 'Delete message?',
-        description: 'This message will be permanently deleted for both of you.',
-        confirm: 'Delete',
-        danger: true,
-      };
-    case 'selected':
-      return {
-        title: count === 1 ? 'Delete message?' : `Delete ${count} messages?`,
+        title:
+          count === 1
+            ? 'Delete message for you?'
+            : `Delete ${count} messages for you?`,
         description:
           count === 1
-            ? 'This message will be permanently deleted for both of you.'
-            : 'These messages will be permanently deleted for both of you.',
+            ? 'It disappears from your side of the chat. The other person still sees it.'
+            : 'They disappear from your side of the chat. The other person still sees them.',
+        confirm: 'Delete for me',
+        danger: false,
+      };
+    case 'deleteForEveryone':
+      return {
+        title:
+          count === 1
+            ? 'Delete message for everyone?'
+            : `Delete ${count} messages for everyone?`,
+        description: `The text is removed for both of you. ${plural(
+          count,
+          'It will show as deleted',
+          'They will show as deleted',
+        )} and this cannot be undone.`,
         confirm: 'Delete',
         danger: true,
       };
@@ -42,7 +61,7 @@ function copyFor(kind: ConfirmKind, count: number): Copy {
       return {
         title: 'Delete all your messages?',
         description:
-          'This will permanently remove all messages you sent in this conversation. Messages from the other person stay where they are.',
+          'Every message you sent is removed for both of you and will show as deleted. Messages from the other person are left alone.',
         confirm: 'Delete',
         danger: true,
       };
@@ -73,7 +92,7 @@ export function DeleteDialog({
 }: DeleteDialogProps) {
   if (!kind) return null;
 
-  const { title, description, confirm, danger } = copyFor(kind, count);
+  const { title, description, confirm, danger } = copyFor(kind, Math.max(count, 1));
 
   return (
     <Modal
