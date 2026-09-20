@@ -1,0 +1,49 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: v.$z-header;
+  flex: 0 0 auto;
+  background: v.$surface;
+  border-bottom: 1px solid v.$border;
+  padding-top: env(safe-area-inset-top, 0px);
+  animation: fade-in v.$fast v.$ease both;
+}
+
+.selection-bar__row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-1;
+  height: v.$header-height;
+  padding: 0 v.$space-2;
+  max-width: v.$max-width;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.selection-bar__icon {
+  @include m.icon-button(40px);
+
+  &--danger:not(:disabled) {
+    color: v.$danger;
+  }
+}
+
+.selection-bar__count {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 v.$space-2;
+  font-size: v.$text-md;
+  font-weight: 600;
+  @include m.truncate;
+}
+
+.selection-bar__note {
+  max-width: v.$max-width;
+  margin: 0 auto;
+  padding: 0 v.$space-4 v.$space-2;
+  font-size: v.$text-xs;
+  color: v.$text-secondary;
+}

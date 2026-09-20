@@ -1,0 +1,223 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: v.$space-2;
+  width: 100%;
+  margin-top: 2px;
+  padding: 0 v.$space-3;
+  animation: rise-in v.$normal v.$ease both;
+
+  &--run-end {
+    margin-bottom: v.$space-3;
+  }
+
+  &--own {
+    justify-content: flex-end;
+  }
+
+  &--their {
+    justify-content: flex-start;
+  }
+
+  &--selecting {
+    cursor: pointer;
+  }
+
+  &--selected {
+    background: rgba(255, 255, 255, 0.045);
+    border-radius: v.$radius-md;
+  }
+
+  &--editing {
+    justify-content: center;
+    margin: v.$space-3 0;
+  }
+}
+
+.bubble-row__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-bottom: v.$space-1;
+  border-radius: v.$radius-full;
+  border: 1.5px solid v.$border-strong;
+  color: v.$accent-contrast;
+  transition: background-color v.$fast v.$ease, border-color v.$fast v.$ease;
+
+  &--on {
+    background: v.$accent;
+    border-color: v.$accent;
+  }
+}
+
+.bubble-row__stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: v.$bubble-max;
+
+  .bubble-row--own & {
+    align-items: flex-end;
+  }
+}
+
+.bubble {
+  @include m.reset-button;
+  @include m.focus-ring(2px);
+  display: block;
+  max-width: 100%;
+  padding: 9px 13px;
+  border-radius: v.$radius-bubble;
+  text-align: left;
+  font-size: v.$text-base;
+  line-height: 1.4;
+  user-select: text;
+  transition: filter v.$fast v.$ease, transform v.$fast v.$ease;
+
+  &:active {
+    transform: scale(0.985);
+  }
+
+  .bubble-row--their & {
+    background: v.$bubble-in;
+    color: v.$bubble-in-text;
+    border-bottom-left-radius: v.$radius-bubble;
+  }
+
+  .bubble-row--own & {
+    background: v.$bubble-out;
+    color: v.$bubble-out-text;
+    border-bottom-right-radius: v.$radius-bubble;
+  }
+
+  .bubble-row--run-end.bubble-row--their & {
+    border-bottom-left-radius: 6px;
+  }
+
+  .bubble-row--run-end.bubble-row--own & {
+    border-bottom-right-radius: 6px;
+  }
+
+  @include m.hover {
+    filter: brightness(1.12);
+  }
+}
+
+.bubble__text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 0 v.$space-1;
+  font-size: v.$text-xs;
+  color: v.$text-tertiary;
+  line-height: 1;
+}
+
+.bubble-meta__edited {
+  color: v.$text-tertiary;
+}
+
+.bubble-meta__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: v.$text-secondary;
+}
+
+.bubble-meta__retry {
+  color: v.$danger;
+}
+
+// Inline editor -------------------------------------------------------------
+.bubble-edit {
+  width: 100%;
+  max-width: 420px;
+  padding: v.$space-4;
+  border-radius: v.$radius-lg;
+  background: v.$surface-raised;
+  border: 1px solid v.$border-strong;
+  animation: pop-in v.$normal v.$ease both;
+}
+
+.bubble-edit__label {
+  font-size: v.$text-xs;
+  font-weight: 600;
+  color: v.$text-secondary;
+  margin-bottom: v.$space-3;
+}
+
+.bubble-edit__field {
+  width: 100%;
+  min-height: 44px;
+  max-height: 200px;
+  padding: v.$space-3;
+  border-radius: v.$radius-md;
+  border: 1px solid v.$border;
+  background: v.$background;
+  color: v.$text-primary;
+  resize: none;
+  line-height: 1.4;
+  overflow-y: auto;
+
+  &:focus {
+    outline: none;
+    border-color: v.$text-tertiary;
+  }
+}
+
+.bubble-edit__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$space-2;
+  margin-top: v.$space-3;
+}
+
+.bubble-edit__button {
+  @include m.reset-button;
+  @include m.focus-ring;
+  @include m.tap-feedback(0.97);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 78px;
+  padding: 0 v.$space-4;
+  border-radius: v.$radius-md;
+  font-size: v.$text-sm;
+  font-weight: 600;
+  color: v.$text-secondary;
+
+  @include m.hover {
+    background: v.$surface-hover;
+    color: v.$text-primary;
+  }
+
+  &--primary {
+    background: v.$accent;
+    color: v.$accent-contrast;
+
+    @include m.hover {
+      background: #e4e4e4;
+      color: v.$accent-contrast;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}

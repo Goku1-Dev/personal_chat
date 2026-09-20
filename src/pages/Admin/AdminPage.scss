@@ -1,0 +1,235 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.admin {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: var(--app-height);
+  background: v.$background;
+}
+
+.admin__header {
+  position: sticky;
+  top: 0;
+  z-index: v.$z-header;
+  display: flex;
+  align-items: center;
+  gap: v.$space-1;
+  height: v.$header-height;
+  padding: 0 v.$space-2;
+  margin-top: env(safe-area-inset-top, 0px);
+  background: rgba(5, 5, 5, 0.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid v.$border;
+}
+
+.admin__icon {
+  @include m.icon-button(40px);
+}
+
+.admin__title {
+  flex: 1 1 auto;
+  padding: 0 v.$space-2;
+  font-size: v.$text-md;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.admin__body {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: v.$space-5 v.$space-4;
+  padding-bottom: calc(#{v.$space-8} + env(safe-area-inset-bottom, 0px));
+}
+
+.admin__loading {
+  display: flex;
+  justify-content: center;
+  padding: v.$space-10 0;
+  color: v.$text-secondary;
+}
+
+.admin__empty {
+  font-size: v.$text-sm;
+  color: v.$text-secondary;
+}
+
+.admin__section {
+  margin-bottom: v.$space-8;
+}
+
+.admin__section-title {
+  font-size: v.$text-sm;
+  font-weight: 600;
+  color: v.$text-secondary;
+  margin-bottom: v.$space-3;
+}
+
+.admin__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: v.$space-2;
+  margin: 0;
+
+  @include m.tablet-up {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.admin__stat {
+  padding: v.$space-4;
+  border-radius: v.$radius-md;
+  background: v.$surface;
+  border: 1px solid v.$border;
+
+  dt {
+    font-size: v.$text-xs;
+    color: v.$text-secondary;
+  }
+
+  dd {
+    margin: v.$space-1 0 0;
+    font-size: v.$text-lg;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+.admin__meta {
+  margin-top: v.$space-3;
+  font-size: v.$text-xs;
+  color: v.$text-tertiary;
+  line-height: 1.5;
+}
+
+.admin__people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid v.$border;
+  border-radius: v.$radius-md;
+  overflow: hidden;
+}
+
+.admin__person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: v.$space-3;
+  padding: v.$space-3 v.$space-4;
+  background: v.$surface;
+
+  & + & {
+    border-top: 1px solid v.$border;
+  }
+}
+
+.admin__person-name {
+  @include m.truncate;
+  font-size: v.$text-sm;
+}
+
+.admin__person-you {
+  color: v.$text-tertiary;
+}
+
+.admin__person-role {
+  flex: 0 0 auto;
+  padding: 2px 9px;
+  border-radius: v.$radius-full;
+  border: 1px solid v.$border-strong;
+  font-size: v.$text-xs;
+  color: v.$text-secondary;
+}
+
+.admin__recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-2;
+}
+
+.admin__recent-item {
+  padding: v.$space-3 v.$space-4;
+  border-radius: v.$radius-md;
+  background: v.$surface;
+  border: 1px solid v.$border;
+}
+
+.admin__recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: v.$space-3;
+  margin-bottom: v.$space-1;
+}
+
+.admin__recent-who {
+  font-size: v.$text-xs;
+  font-weight: 600;
+  color: v.$text-secondary;
+}
+
+.admin__recent-when {
+  font-size: v.$text-xs;
+  color: v.$text-tertiary;
+}
+
+.admin__recent-text {
+  font-size: v.$text-sm;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$space-2;
+}
+
+.admin__action {
+  @include m.reset-button;
+  @include m.focus-ring;
+  @include m.tap-feedback(0.97);
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-2;
+  min-height: 44px;
+  padding: 0 v.$space-4;
+  border-radius: v.$radius-md;
+  background: v.$accent;
+  color: v.$accent-contrast;
+  font-size: v.$text-sm;
+  font-weight: 600;
+
+  @include m.hover {
+    background: #e4e4e4;
+  }
+
+  &--quiet {
+    background: v.$surface;
+    border: 1px solid v.$border;
+    color: v.$text-primary;
+
+    @include m.hover {
+      background: v.$surface-hover;
+    }
+  }
+}
+
+.admin__note {
+  margin-top: v.$space-6;
+  font-size: v.$text-xs;
+  line-height: 1.55;
+  color: v.$text-tertiary;
+}

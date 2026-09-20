@@ -1,0 +1,143 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: v.$z-menu;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  animation: fade-in v.$fast v.$ease both;
+
+  @include m.tablet-up {
+    align-items: center;
+    padding: v.$space-5;
+  }
+}
+
+.sheet__surface {
+  width: 100%;
+  max-width: 460px;
+  padding: v.$space-2 v.$space-3;
+  padding-bottom: calc(#{v.$space-3} + env(safe-area-inset-bottom, 0px));
+  background: v.$surface-raised;
+  border: 1px solid v.$border;
+  border-bottom: 0;
+  border-radius: v.$radius-lg v.$radius-lg 0 0;
+  box-shadow: v.$shadow-sheet;
+  animation: sheet-up v.$slow v.$ease both;
+
+  @include m.tablet-up {
+    border-bottom: 1px solid v.$border;
+    border-radius: v.$radius-lg;
+    padding-bottom: v.$space-3;
+    animation: pop-in v.$normal v.$ease both;
+  }
+}
+
+.sheet__grip {
+  width: 36px;
+  height: 4px;
+  margin: v.$space-2 auto v.$space-3;
+  border-radius: v.$radius-full;
+  background: v.$border-strong;
+
+  @include m.tablet-up {
+    display: none;
+  }
+}
+
+.sheet__title {
+  padding: 0 v.$space-3 v.$space-2;
+  font-size: v.$text-sm;
+  font-weight: 600;
+  color: v.$text-secondary;
+}
+
+.sheet__preview {
+  margin: 0 v.$space-2 v.$space-2;
+  padding: v.$space-3;
+  border-radius: v.$radius-md;
+  background: v.$surface;
+  color: v.$text-secondary;
+  font-size: v.$text-sm;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sheet__action {
+  @include m.reset-button;
+  @include m.focus-ring(-2px);
+  @include m.tap-feedback(0.985);
+  display: flex;
+  align-items: center;
+  gap: v.$space-4;
+  width: 100%;
+  min-height: 52px;
+  padding: v.$space-3;
+  border-radius: v.$radius-md;
+  text-align: left;
+  font-size: v.$text-base;
+
+  @include m.hover {
+    background: v.$surface-hover;
+  }
+
+  &--danger {
+    color: v.$danger;
+  }
+}
+
+.sheet__action-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: currentColor;
+  opacity: 0.85;
+}
+
+.sheet__action-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sheet__action-label {
+  font-weight: 500;
+}
+
+.sheet__action-hint {
+  font-size: v.$text-xs;
+  color: v.$text-tertiary;
+}
+
+.sheet__cancel {
+  @include m.reset-button;
+  @include m.focus-ring(-2px);
+  @include m.tap-feedback(0.985);
+  width: 100%;
+  min-height: 48px;
+  margin-top: v.$space-2;
+  border-radius: v.$radius-md;
+  background: v.$surface;
+  color: v.$text-secondary;
+  font-size: v.$text-base;
+  font-weight: 500;
+
+  @include m.hover {
+    background: v.$surface-hover;
+    color: v.$text-primary;
+  }
+}

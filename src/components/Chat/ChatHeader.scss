@@ -1,0 +1,66 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.chat-header {
+  position: sticky;
+  top: 0;
+  z-index: v.$z-header;
+  flex: 0 0 auto;
+  background: rgba(5, 5, 5, 0.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid v.$border;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.chat-header__row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-1;
+  height: v.$header-height;
+  padding: 0 v.$space-2;
+  max-width: v.$max-width;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-header__icon {
+  @include m.icon-button(40px);
+  color: v.$text-primary;
+}
+
+.chat-header__spacer {
+  width: v.$space-2;
+  flex: 0 0 auto;
+}
+
+.chat-header__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 v.$space-2;
+}
+
+.chat-header__title {
+  @include m.truncate;
+  font-size: v.$text-md;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.chat-header__status {
+  @include m.truncate;
+  font-size: v.$text-xs;
+  color: v.$text-secondary;
+  line-height: 1.3;
+}
+
+.chat-header__banner {
+  padding: v.$space-1 v.$space-4 v.$space-2;
+  text-align: center;
+  font-size: v.$text-xs;
+  color: v.$text-secondary;
+
+  &--offline {
+    color: v.$warning;
+  }
+}

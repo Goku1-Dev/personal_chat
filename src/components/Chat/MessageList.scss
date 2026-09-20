@@ -1,0 +1,127 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.message-list-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.message-list {
+  @include m.scroll-y;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: v.$max-width;
+  margin: 0 auto;
+  padding: v.$space-4 0 v.$space-3;
+  scroll-behavior: smooth;
+
+  &--centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: v.$text-secondary;
+  }
+}
+
+.message-list__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-list__divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: v.$space-4 0 v.$space-3;
+
+  span {
+    padding: 4px 12px;
+    border-radius: v.$radius-full;
+    background: v.$surface;
+    border: 1px solid v.$border;
+    font-size: v.$text-xs;
+    color: v.$text-secondary;
+  }
+}
+
+.message-list__older {
+  display: flex;
+  justify-content: center;
+  padding: v.$space-2 0 v.$space-4;
+  color: v.$text-secondary;
+}
+
+.message-list__older-button {
+  @include m.reset-button;
+  @include m.focus-ring;
+  padding: 6px 14px;
+  border-radius: v.$radius-full;
+  border: 1px solid v.$border;
+  background: v.$surface;
+  font-size: v.$text-xs;
+  color: v.$text-secondary;
+
+  @include m.hover {
+    background: v.$surface-hover;
+    color: v.$text-primary;
+  }
+}
+
+.message-list__empty {
+  height: 100%;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: v.$space-2;
+  padding: v.$space-8 v.$space-6;
+  text-align: center;
+  animation: fade-in v.$slow v.$ease both;
+}
+
+.message-list__empty-mark {
+  display: inline-flex;
+  margin-bottom: v.$space-3;
+  color: v.$text-secondary;
+  opacity: 0.85;
+}
+
+.message-list__empty-title {
+  font-size: v.$text-md;
+  font-weight: 500;
+  color: v.$text-primary;
+}
+
+.message-list__empty-body {
+  font-size: v.$text-sm;
+  color: v.$text-secondary;
+}
+
+.new-message-pill {
+  @include m.reset-button;
+  @include m.focus-ring;
+  @include m.tap-feedback(0.96);
+  position: absolute;
+  left: 50%;
+  bottom: v.$space-4;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: v.$radius-full;
+  background: v.$surface-raised;
+  border: 1px solid v.$border-strong;
+  box-shadow: v.$shadow-menu;
+  font-size: v.$text-xs;
+  font-weight: 500;
+  color: v.$text-primary;
+  animation: rise-in v.$normal v.$ease both;
+
+  &:active {
+    transform: translateX(-50%) scale(0.96);
+  }
+}

@@ -1,0 +1,10 @@
+@use '../../styles/variables' as v;
+
+.spinner {
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: spin 620ms linear infinite;
+}

@@ -1,0 +1,93 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: v.$z-overlay;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$space-5;
+  background: rgba(0, 0, 0, 0.66);
+  backdrop-filter: blur(2px);
+  animation: fade-in v.$fast v.$ease both;
+}
+
+.modal__surface {
+  width: 100%;
+  max-width: 360px;
+  padding: v.$space-6;
+  border-radius: v.$radius-lg;
+  background: v.$surface-raised;
+  border: 1px solid v.$border;
+  box-shadow: v.$shadow-menu;
+  animation: pop-in v.$normal v.$ease both;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.modal__title {
+  font-size: v.$text-md;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: v.$space-2;
+}
+
+.modal__description {
+  font-size: v.$text-sm;
+  line-height: 1.5;
+  color: v.$text-secondary;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$space-2;
+  margin-top: v.$space-6;
+}
+
+.modal-button {
+  @include m.reset-button;
+  @include m.focus-ring;
+  @include m.tap-feedback(0.97);
+  padding: v.$space-3 v.$space-5;
+  border-radius: v.$radius-md;
+  font-size: v.$text-sm;
+  font-weight: 600;
+  min-height: 42px;
+
+  &--ghost {
+    color: v.$text-secondary;
+
+    @include m.hover {
+      background: v.$surface-hover;
+      color: v.$text-primary;
+    }
+  }
+
+  &--primary {
+    background: v.$accent;
+    color: v.$accent-contrast;
+
+    @include m.hover {
+      background: #e4e4e4;
+    }
+  }
+
+  &--danger {
+    background: v.$danger-soft;
+    color: v.$danger;
+
+    @include m.hover {
+      background: rgba(255, 90, 90, 0.2);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

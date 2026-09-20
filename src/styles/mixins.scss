@@ -1,0 +1,117 @@
+@use 'variables' as v;
+
+// Media queries ------------------------------------------------------------
+@mixin tablet-up {
+  @media (min-width: v.$bp-tablet) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: v.$bp-desktop) {
+    @content;
+  }
+}
+
+@mixin touch {
+  @media (hover: none) and (pointer: coarse) {
+    @content;
+  }
+}
+
+@mixin hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @content;
+    }
+  }
+}
+
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+// Behaviour ----------------------------------------------------------------
+@mixin focus-ring($offset: 2px) {
+  &:focus-visible {
+    outline: 2px solid v.$text-primary;
+    outline-offset: $offset;
+    border-radius: v.$radius-sm;
+  }
+}
+
+@mixin reset-button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@mixin tap-feedback($scale: 0.96) {
+  transition: transform v.$fast v.$ease, background-color v.$fast v.$ease,
+    opacity v.$fast v.$ease;
+
+  &:active:not(:disabled) {
+    transform: scale($scale);
+  }
+
+  @include reduced-motion {
+    transition: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+@mixin icon-button($size: 40px) {
+  @include reset-button;
+  @include focus-ring(0);
+  @include tap-feedback;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $size;
+  height: $size;
+  flex: 0 0 auto;
+  border-radius: v.$radius-full;
+  color: v.$text-primary;
+
+  @include hover {
+    background: v.$surface-hover;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin scroll-y {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+@mixin safe-bottom($extra: 0px) {
+  padding-bottom: calc(#{$extra} + env(safe-area-inset-bottom, 0px));
+}
+
+@mixin safe-top($extra: 0px) {
+  padding-top: calc(#{$extra} + env(safe-area-inset-top, 0px));
+}

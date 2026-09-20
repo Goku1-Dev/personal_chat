@@ -1,0 +1,69 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.toast-viewport {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: v.$z-toast;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 v.$space-4;
+  padding-bottom: calc(#{v.$space-4} + env(safe-area-inset-bottom, 0px));
+}
+
+.toast-viewport__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-2;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: v.$space-3;
+  padding: v.$space-3 v.$space-3 v.$space-3 v.$space-4;
+  border-radius: v.$radius-md;
+  background: v.$surface-raised;
+  border: 1px solid v.$border;
+  box-shadow: v.$shadow-menu;
+  font-size: v.$text-sm;
+  color: v.$text-primary;
+  animation: rise-in v.$normal v.$ease both;
+}
+
+.toast__icon {
+  flex: 0 0 auto;
+  color: v.$text-secondary;
+}
+
+.toast--error {
+  border-color: rgba(255, 90, 90, 0.35);
+
+  .toast__icon {
+    color: v.$danger;
+  }
+}
+
+.toast--success .toast__icon {
+  color: v.$success;
+}
+
+.toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.toast__close {
+  @include m.icon-button(28px);
+  color: v.$text-secondary;
+}

@@ -1,0 +1,261 @@
+@use '../../styles/variables' as v;
+
+.composer {
+  flex: 0 0 auto;
+  z-index: v.$z-input;
+  background: rgba(5, 5, 5, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid v.$border;
+  padding: v.$space-3 v.$space-4 v.$space-4;
+}
+
+.composer__inner {
+  display: flex;
+  align-items: flex-end;
+  gap: v.$space-2;
+  max-width: v.$max-width;
+  margin: 0 auto;
+}
+
+/* -----------------------------------------
+   Image / Camera buttons
+----------------------------------------- */
+
+.composer__media-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding-bottom: 0;
+}
+
+.composer__media-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 42px;
+
+  border: 1px solid v.$border;
+  border-radius: v.$radius-full;
+
+  background: rgba(255, 255, 255, 0.04);
+  color: v.$text-secondary;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    color: v.$text-primary;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid v.$accent;
+    outline-offset: 2px;
+  }
+}
+
+/* -----------------------------------------
+   Message textarea
+----------------------------------------- */
+
+.composer__field {
+  flex: 1;
+  min-width: 0;
+
+  min-height: 42px;
+  max-height: 132px;
+
+  padding: 10px v.$space-4;
+
+  border: 1px solid v.$border;
+  border-radius: v.$radius-bubble;
+
+  background: rgba(255, 255, 255, 0.04);
+  color: v.$text-primary;
+
+  font: inherit;
+  font-size: 15px;
+  line-height: 22px;
+
+  resize: none;
+  overflow-y: auto;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+
+  &::placeholder {
+    color: v.$text-secondary;
+  }
+
+  &:focus {
+    border-color: v.$accent;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* Scrollbar */
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+  }
+}
+
+/* -----------------------------------------
+   Send button
+----------------------------------------- */
+
+.composer__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 42px;
+
+  border: none;
+  border-radius: v.$radius-full;
+
+  background: v.$accent;
+  color: white;
+
+  cursor: pointer;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid v.$accent;
+    outline-offset: 3px;
+  }
+}
+
+/* -----------------------------------------
+   Character limit warning
+----------------------------------------- */
+
+.composer__limit {
+  max-width: v.$max-width;
+  margin: v.$space-2 auto 0;
+
+  padding: 0 v.$space-2;
+
+  color: #ff6b6b;
+
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* -----------------------------------------
+   Mobile
+----------------------------------------- */
+
+@media (max-width: 600px) {
+  .composer {
+    padding: v.$space-2 v.$space-2 v.$space-3;
+  }
+
+  .composer__inner {
+    gap: 6px;
+  }
+
+  .composer__media-actions {
+    gap: 2px;
+  }
+
+  .composer__media-button {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .composer__field {
+    min-height: 38px;
+    padding: 8px 12px;
+
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .composer__send {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+}
+
+/* -----------------------------------------
+   Very small screens
+----------------------------------------- */
+
+@media (max-width: 400px) {
+  .composer__media-button {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .composer__send {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .composer__field {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

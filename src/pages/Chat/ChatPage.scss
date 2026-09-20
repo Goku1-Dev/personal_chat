@@ -1,0 +1,14 @@
+@use '../../styles/variables' as v;
+@use '../../styles/mixins' as m;
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  // The keyboard-aware height: the composer stays reachable when the
+  // on-screen keyboard opens instead of being pushed underneath it.
+  height: var(--app-height);
+  max-height: var(--app-height);
+  overflow: hidden;
+  background: v.$background;
+}
