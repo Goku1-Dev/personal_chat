@@ -127,6 +127,16 @@ export function ChatPage() {
     [sendMessage, notify],
   );
 
+  const handleSendImage = useCallback(
+    async (_file: File) => {
+      notify(
+        'Image sending is not available yet.',
+        'error',
+      );
+    },
+    [notify],
+  );
+
   const handleRetry = useCallback(
     async (message: UiMessage) => {
       await deleteMessages([message.id]).catch(() => undefined);
@@ -331,6 +341,7 @@ export function ChatPage() {
       {!selecting && !editingId && (
         <MessageInput
           onSend={handleSend}
+          onSendImage={handleSendImage}
           onTypingChange={broadcastTyping}
           disabled={!conversationId || Boolean(loadError)}
         />
